@@ -62,6 +62,7 @@ GlWidget::GlWidget(QWidget *parent)
 
 	curMesh = NULL;
 	nowDrawMode = RENDER_MODE;
+	sMode = 0;
 }
 
 GlWidget::~GlWidget()
@@ -288,7 +289,7 @@ void GlWidget::mousePressEvent(QMouseEvent *event)
 	_lastPos = event->pos();
 	_currPos = event->pos();
 
-	if (event->button() == Qt::MidButton)
+	if (event->button() == Qt::LeftButton)
 	{
 		isRotateMode = true;
 		MousePt.s.X = (GLfloat)event->x();
@@ -297,26 +298,20 @@ void GlWidget::mousePressEvent(QMouseEvent *event)
 		_arcBall->click(&MousePt);								// Update Start Vector And Prepare For Dragging
 	}
 
-	if (event->button() == Qt::LeftButton)
+	if (event->button() == Qt::MidButton)
 	{
-		//isDragMode = true;
-		//if (firstDrag)
-		//{
-		//	outputAppend("#Number of deformation vectors");
-		//	outputAppend("0");
-		//	outputAppend("#Vectors");
-		//	firstDrag = false;
-		//}
-		isSelectMode = true;
-		sMode = 1;
-		nowDrawMode = RENDER_MODE;
+		prepareNewSelect();
+		curMesh->tempSelectedF.clear();
+		curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
 	}
 
 	if (event->button() == Qt::RightButton)
 	{
 		isSelectMode = true;
-		sMode = 0;
 		nowDrawMode = RENDER_MODE;
+		tempSelectedFIdx.clear();
+		tempDepth.clear();
+
 	}
 
 
@@ -453,6 +448,7 @@ void GlWidget::pick(const QPoint &pos)
 {
 	/*if (curMesh->select2 || deformed)
 		curMesh->resetSelection();*/
+	
 	deformed = false;
 
 	GLint hits;
@@ -535,13 +531,15 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 
 		GLuint nb_names, name, *ptr;
 		int n1 = -1;
-		GLdouble z1, z2, zMin=1000;
+		GLdouble z1, z2, zMin = 1000, zMax = -1;;
 
 		qDebug() << "Hits:" << hits;
 
+		
+
 		ptr = (GLuint *)buffer;
 
-		/*  Pour chaque hit (collision)  */
+		/*  store the hit faces index and depth  */
 		for (GLint i = 0; i < hits; ++i)
 		{
 			nb_names = ptr[0];
@@ -549,60 +547,70 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 			{
 				z1 = (double)ptr[1] / 0x7fffffff;
 				z2 = (double)ptr[2] / 0x7fffffff;
+				tempDepth.push_back(z1);
 
 				name = ptr[3];
+				tempSelectedFIdx.push_back(name);
 
-				if (selectAreaMode)
-				{
-					if (s1){
-						curMesh->selectedF[name] = true;
-						if (mode == 1) // left button
-							curMesh->accumulate_s[name] = true;
-					}
-					else
-						curMesh->selectedF2[name] = true;
-				}
-				//if (selectTopMode)
+				//if (selectAreaMode)
 				//{
+				//	curMesh->selectedF[name] = true;
+				//	if (mode == 1) // 
+				//		curMesh->accumulate_s[name] = true;
+				////}
 				if (z1 < zMin)
 				{
 					zMin = z1;
 					n1 = name;
 				}
-				//}
-				qDebug() << name;
-			}
-			else
-			{
-				//QMessageBox::critical(this, "Error", "Number of hit names not equal to 1.");
-				//exit(1);
+				if (z1 > zMax)
+				{
+					zMax = z1;
+				}
+				selectDepth = zMax;
+
+				emit(depthChanged(zMax, zMin));
+				//qDebug() << name;
 			}
 			ptr += 3 + nb_names;
 		}
-		//if (selectTopMode && n1 >= 0)
-		if (n1 >= 0)
-		{
-			if (s1)
-			{
-				curMesh->selectedF[n1] = true;
-				curMesh->pickedF = n1;
 
-				if (selectAreaMode && mode == 0)// right button
-					curMesh->selectTopComponet();
-
-				curMesh->needSelectedV();
+		//处理所有框选内面片
+		for (int i = 0; i < tempSelectedFIdx.size(); i++){
+			if (selectAreaMode){
+				updateDepthSelect();
 			}
-			else
-			{
-				curMesh->selectedF2[n1] = true;
-				curMesh->pickedF = n1;
-
-				if (selectAreaMode)
-					curMesh->selectTopComponet2();
-
-				curMesh->needSelectedV2();
+			else{
+				/*if (mode == 0)*/
+					curMesh->tempSelectedF[n1] = true;
+				/*if (mode == 1)
+					curMesh->accumulate_s[n1] = false;*/
 			}
 		}
+		//
+		//if (n1 >= 0)
+		//{
+		//	if (s1)
+		//	{
+		//		curMesh->selectedF[n1] = true;
+		//		curMesh->pickedF = n1;
+
+		//		if (selectAreaMode && mode == 0)// right button
+		//			curMesh->selectTopComponet();
+
+		//		curMesh->needSelectedV();
+		//	}
+		//	else
+		//	{
+		//		curMesh->selectedF2[n1] = true;
+		//		curMesh->pickedF = n1;
+
+		//		if (selectAreaMode)
+		//			curMesh->selectTopComponet2();
+
+		//		curMesh->needSelectedV2();
+		//	}
+		//}
 	}
 	else
 	{
@@ -649,4 +657,28 @@ void GlWidget::addRegion(int label,int no){
 void GlWidget::resetAllRegion(){
 	curMesh->resetLabelAndRegion();
 	curMesh->resetSelection();
+}
+
+void GlWidget::prepareNewSelect(){
+	// save this time's faces
+
+	if (sMode == 0) // select
+		for (int i = 0; i < curMesh->F.rows(); i++)
+			curMesh->accumulate_s[i] = curMesh->accumulate_s[i] || curMesh->tempSelectedF[i];
+	if (sMode == 1) // deselect
+		for (int i = 0; i < curMesh->F.rows(); i++)
+			curMesh->accumulate_s[i] = curMesh->accumulate_s[i] && (!curMesh->tempSelectedF[i]);
+	tempSelectedFIdx.clear();
+	tempDepth.clear();
+}
+
+void GlWidget::updateDepthSelect(){
+	curMesh->tempSelectedF.clear();
+	curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
+
+	for (int i = 0; i < tempSelectedFIdx.size(); i++){
+		if (tempDepth[i] <= selectDepth){ // select faces in depth
+			curMesh->tempSelectedF[tempSelectedFIdx[i]] = true;
+		}
+	}
 }

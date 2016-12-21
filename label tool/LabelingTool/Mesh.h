@@ -44,8 +44,9 @@ public:
 	bSphare bs;
 
 	std::vector<std::set<int>> F_Fset, V_Fset, V_Vset;
-	std::vector<bool> selectedV, selectedF, deletedV, deletedF, selectedV2, selectedF2;
-	std::vector<bool> accumulate_s;
+	std::vector<bool> selectedV, selectedF, deletedV, deletedF, selectedV2, selectedF2;   // after mouse release ,the selected faces
+	std::vector<bool> accumulate_s,tempSelectedF; // until now, the selected faces      after move the slider, the selected faces
+	std::vector<bool> deselectedF;
 	std::vector<int> class_label;
 	std::vector<int> region_number;
 	Eigen::Vector3d dragVec;

@@ -34,7 +34,9 @@ protected:
 
 	bool isSelectMode,isDragMode, isRotateMode,selectAreaMode,isSelecting,deformed,firstDrag;
 	bool isClicked;
-	int sMode;
+	
+	QVector <int> tempSelectedFIdx;
+	QVector <GLdouble> tempDepth;
 
 
 public:
@@ -47,11 +49,18 @@ public:
 	void addRegion(int label, int no);
 	void resetAllRegion();
 
+	void prepareNewSelect();
+	void updateDepthSelect();
+
 	int nowDrawMode;
+
+	int sMode;  // 0 ,select  1, deselect
+	GLdouble minDepth, maxDepth, selectDepth;
 
 signals:
 	void append(const QString &);
 	void setText(const QString &);
+	void depthChanged(GLdouble max, GLdouble min);
 
 protected:
 	virtual void initializeGL();

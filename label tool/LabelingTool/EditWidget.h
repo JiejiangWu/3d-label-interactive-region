@@ -23,9 +23,16 @@ protected:
 	QTextBrowser *textBrowser;
 	Mesh *mm;
 	QPushButton *openButton, *saveAsButton, *saveButton, *clearButton, *copyButton, *generateButton, *addRegionButton, *resetButton;
+	QRadioButton* mouseRightButtonMode[2];
+	QButtonGroup*  group;
+	QSlider *selectDepth;
+
 	QLineEdit *line1, *line2;
 	bool loadFromFile;
 	QString saveName;
+	GLdouble zmin, zmax;
+
+	int rightButtonState;  // 0 - select, 1 - deselect
 
 	void init();
 	void save();
@@ -39,5 +46,10 @@ public slots:
 	void generateText();
 	void addRegion();
 	void resetAll();
+	void changeRightButtonMode1();
+	void changeRightButtonMode2();
+	void updateDepthMaxMin(GLdouble max, GLdouble min);
+	void changeSelectDepth();
+
 };
 

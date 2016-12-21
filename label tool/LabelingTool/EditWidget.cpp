@@ -122,6 +122,7 @@ EditWidget::EditWidget()
 
 	textBrowser = new QTextBrowser();
 
+	//按钮们
 	QVBoxLayout *vLayout = new QVBoxLayout();
 	openButton = new QPushButton(tr("Load"));
 	saveAsButton = new QPushButton(tr("Save As"));
@@ -131,15 +132,32 @@ EditWidget::EditWidget()
 	generateButton = new QPushButton(tr("generateText"));
 	addRegionButton = new QPushButton(tr("add new Region"));
 	resetButton = new QPushButton(tr("reset all Region"));
+
+	//右键模式 选取\去选取
+	QString RightButtonMode[] = { "select", "deselect"};
+	mouseRightButtonMode[0] = new QRadioButton(RightButtonMode[0], this);
+	mouseRightButtonMode[1] = new QRadioButton(RightButtonMode[1], this);
+	group = new QButtonGroup;
+	group->addButton(mouseRightButtonMode[0]);
+	group->addButton(mouseRightButtonMode[1]);
+	mouseRightButtonMode[0]->setChecked(true);
 	
+	//选取深度滑动条
+	selectDepth = new QSlider(Qt::Horizontal);
+	selectDepth->setMinimum(0);
+	selectDepth->setMaximum(1000);
+	selectDepth->setValue(500);
+
+	//类别、区域号码输入框
 	line1 = new QLineEdit;
 	line2 = new QLineEdit;
 
 	QLabel * label1 = new QLabel(tr("class label"));
 	QLabel * label2 = new QLabel(tr("region number"));
 
+
+	// 类别注释
 	QTextEdit *explain = new QTextEdit;
-	//explain->setStyleSheet("QTextEdit { background: grey }");
 	QPalette pl = explain->palette();
 	pl.setBrush(QPalette::Base, QBrush(QColor(255, 0, 0, 0)));
 	explain->setPalette(pl);
@@ -147,13 +165,13 @@ EditWidget::EditWidget()
 	explain->setFixedSize(150, 240);
 	explain->setLineWrapMode(QTextEdit::NoWrap);
 
-	explain->append("sit\t 1");
-	explain->append("rely\t 2");
-	explain->append("grounding\t 3");
-	explain->append("handput\t 4");
-	explain->append("grasp\t 5");
-	explain->append("pedal\t 6");
-	explain->append("carry\t 7");
+	explain->append("sit\t1");
+	explain->append("rely\t2");
+	explain->append("grounding\t3");
+	explain->append("handput\t4");
+	explain->append("grasp\t5");
+	explain->append("pedal\t6");
+	explain->append("carry\t7");
 	explain->setReadOnly(true);
 	explain->setDocumentTitle("class");
 	
@@ -161,7 +179,11 @@ EditWidget::EditWidget()
 	vLayout->addWidget(openButton);
 	vLayout->addWidget(saveAsButton);
 	vLayout->addWidget(saveButton);
-	vLayout->addSpacing(20);
+	vLayout->addSpacing(10);
+	vLayout->addWidget(mouseRightButtonMode[0]);
+	vLayout->addWidget(mouseRightButtonMode[1]);
+	vLayout->addWidget(selectDepth);
+	vLayout->addSpacing(10);
 	vLayout->addWidget(copyButton);
 	vLayout->addWidget(clearButton);
 	vLayout->addWidget(generateButton);
@@ -201,6 +223,10 @@ EditWidget::EditWidget()
 	connect(generateButton, SIGNAL(clicked()), this, SLOT(generateText()));
 	connect(addRegionButton, SIGNAL(clicked()), this, SLOT(addRegion()));
 	connect(resetButton, SIGNAL(clicked()), this, SLOT(resetAll()));
+	connect(mouseRightButtonMode[0], SIGNAL(pressed()), this, SLOT(changeRightButtonMode1()));
+	connect(mouseRightButtonMode[1], SIGNAL(pressed()), this, SLOT(changeRightButtonMode2()));
+	connect(glWidget, SIGNAL(depthChanged(GLdouble, GLdouble)), this, SLOT(updateDepthMaxMin(GLdouble, GLdouble)));
+	connect(selectDepth, SIGNAL(valueChanged(int)), this, SLOT(changeSelectDepth()));
 
 	mm = NULL;
 
@@ -299,6 +325,32 @@ void EditWidget::addRegion(){
 void EditWidget::resetAll(){
 	glWidget->resetAllRegion();
 	glWidget->nowDrawMode = RENDER_MODE;
+}
+
+void EditWidget::changeRightButtonMode1(){
+	rightButtonState = 0;
+	glWidget->sMode = rightButtonState;
+}
+
+void EditWidget::changeRightButtonMode2(){
+	rightButtonState = 1;
+	glWidget->sMode = rightButtonState;
+}
+
+void EditWidget::changeSelectDepth(){
+	glWidget->selectDepth = selectDepth->value() / 1000.0 * (zmax - zmin) + zmin;
+	glWidget->updateDepthSelect();
+	glWidget->update();
+}
+
+void EditWidget::updateDepthMaxMin(GLdouble max, GLdouble min){
+	
+	//selectDepth->setMinimum(min);
+	//selectDepth->setMaximum(max);
+	
+	zmin = min;
+	zmax = max;
+	selectDepth->setValue(1000);
 }
 
 EditWidget::~EditWidget()

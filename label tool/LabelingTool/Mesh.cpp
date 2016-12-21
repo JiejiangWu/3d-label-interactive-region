@@ -67,6 +67,11 @@ void Mesh::resetSelection()
 	selectedF2.resize(F.rows(), false);
 	accumulate_s.clear();
 	accumulate_s.resize(F.rows(), false);
+	tempSelectedF.clear();
+	tempSelectedF.resize(F.rows(), false);
+
+	deselectedF.clear();
+	deselectedF.resize(F.rows(), false);
 	select1 = false;
 	select2 = false;
 }
@@ -214,6 +219,9 @@ void Mesh::Draw(int mode) const
 	GLfloat deformationColor[4] =
 	{ _color.redF(), _color.greenF(), _color.blueF(), _color.alphaF() };
 
+	GLfloat middleColor[4] =
+	{ (selectionColor[0] + diffuseColor[0]) / 2, (selectionColor[1] + diffuseColor[1]) / 2, (selectionColor[2] + diffuseColor[2]) / 2, 0.0 };
+
 	int count = F.rows();
 
 	if (mode == RENDER_MODE || mode == REGION_MODE)
@@ -231,9 +239,12 @@ void Mesh::Draw(int mode) const
 		for (int k = 0; k < 3; k++)
 		{
 			if (mode == RENDER_MODE){
-				if (selectedF[i])
+				if (accumulate_s[i])
 				{
 					glMaterialfv(GL_FRONT, GL_DIFFUSE, selectionColor);
+				}
+				else if (tempSelectedF[i]){
+					glMaterialfv(GL_FRONT, GL_DIFFUSE, middleColor);
 				}
 				else
 				{
