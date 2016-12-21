@@ -76,7 +76,7 @@ public:
 	void applyChanges();
 	void applyNormalize();
 	void applyHarmonicDeformation();
-	void Draw(int mode = RENDER_MODE) const;
+	void Draw(int mode = RENDER_MODE, int selectOrDeselect = 1) const;
 
 	void resetLabelAndRegion();
 	void addregion(int label, int no);

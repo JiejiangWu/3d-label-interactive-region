@@ -19,6 +19,7 @@ public:
 	~EditWidget();
 
 protected:
+
 	GlWidget *glWidget;
 	QTextBrowser *textBrowser;
 	Mesh *mm;

@@ -35,8 +35,7 @@ protected:
 	bool isSelectMode,isDragMode, isRotateMode,selectAreaMode,isSelecting,deformed,firstDrag;
 	bool isClicked;
 	
-	QVector <int> tempSelectedFIdx;
-	QVector <GLdouble> tempDepth;
+	
 
 
 public:
@@ -58,9 +57,11 @@ public:
 
 	int sMode;  // 0 ,select  1, deselect
 	GLdouble minDepth, maxDepth, selectDepth;
+	int RegionCount;
 
 	QVector<QString> classNames;
-
+	QVector <int> tempSelectedFIdx;
+	QVector <GLdouble> tempDepth;
 	
 
 
@@ -78,6 +79,7 @@ protected:
 	virtual void mousePressEvent(QMouseEvent *event);
 	virtual void mouseReleaseEvent(QMouseEvent *event);
 	virtual void mouseDoubleClickEvent(QMouseEvent * event);
+	virtual void keyPressEvent(QKeyEvent * event);
 	virtual void pick(const QPoint &pos);
 	virtual void processHits(GLint hits, GLuint buffer[], int mode);
 	virtual void draw(int mode = RENDER_MODE);

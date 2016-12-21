@@ -71,6 +71,8 @@ GlWidget::GlWidget(QWidget *parent)
 	classNames.push_back("grasp");
 	classNames.push_back("pedal");
 	classNames.push_back("carry");
+
+	RegionCount = 0;
 }
 
 GlWidget::~GlWidget()
@@ -140,7 +142,7 @@ void GlWidget::draw(int mode)
 	glRotated(_rz / 16.0, 0.0, 0.0, 1.0);
 	QVectorIterator<Mesh*> mesh(_meshes);
 	while (mesh.hasNext())
-		mesh.next()->Draw(mode);
+		mesh.next()->Draw(mode, sMode);
 
 	if (isSelecting && mode==RENDER_MODE)
 	{
@@ -247,6 +249,7 @@ void GlWidget::mouseMoveEvent(QMouseEvent *event)
 
 }
 
+
 void GlWidget::mousePressEvent(QMouseEvent *event)
 {
 	if (!curMesh)
@@ -284,9 +287,6 @@ void GlWidget::mousePressEvent(QMouseEvent *event)
 	{
 		isSelectMode = true;
 		nowDrawMode = RENDER_MODE;
-		tempSelectedFIdx.clear();
-		tempDepth.clear();
-
 	}
 
 
@@ -410,13 +410,22 @@ void GlWidget::mouseReleaseEvent(QMouseEvent *event)
 
 void GlWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-
-	//_currPos = event->pos();
-	//if (event->button() == Qt::RightButton)
-	//{
-	//	curMesh->selectComponet();
-	//	curMesh->needSelectedV();
+	//if (event->button() == Qt::RightButton){
+	//	tempSelectedFIdx.clear();
+	//	tempDepth.clear();
+	//	curMesh->tempSelectedF.clear();
+	//	curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
+	//	qDebug() << "double click" << endl;
 	//}
+}
+
+void GlWidget::keyPressEvent(QKeyEvent * event){
+	if (event->key() == Qt::Key_Space){
+		tempSelectedFIdx.clear();
+		tempDepth.clear();
+		curMesh->tempSelectedF.clear();
+		curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
+	}
 }
 
 void GlWidget::pick(const QPoint &pos)
@@ -508,9 +517,6 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 		GLuint nb_names, name, *ptr;
 		int n1 = -1;
 		GLdouble z1, z2, zMin = 1000, zMax = -1;;
-
-		qDebug() << "Hits:" << hits;
-
 		
 
 		ptr = (GLuint *)buffer;
@@ -550,12 +556,15 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 			}
 			ptr += 3 + nb_names;
 		}
-
+		if (hits > 1)
+		{
+			emit(depthChanged(zMax, zMin));
+			qDebug() << "depth changed:" << "max" << zMax << "min" << zMin<< endl;
+		}
 		//处理所有框选内面片
 		for (int i = 0; i < tempSelectedFIdx.size(); i++){
 			if (selectAreaMode){
 				updateDepthSelect();
-				emit(depthChanged(zMax, zMin));
 			}
 			else{
 
@@ -632,6 +641,7 @@ void GlWidget::addRegion(int label,int no){
 void GlWidget::resetAllRegion(){
 	curMesh->resetLabelAndRegion();
 	curMesh->resetSelection();
+	RegionCount = 0;
 }
 
 void GlWidget::prepareNewSelect(){
@@ -650,7 +660,6 @@ void GlWidget::prepareNewSelect(){
 void GlWidget::updateDepthSelect(){
 	curMesh->tempSelectedF.clear();
 	curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
-
 	for (int i = 0; i < tempSelectedFIdx.size(); i++){
 		if (tempDepth[i] <= selectDepth){ // select faces in depth
 			curMesh->tempSelectedF[tempSelectedFIdx[i]] = true;

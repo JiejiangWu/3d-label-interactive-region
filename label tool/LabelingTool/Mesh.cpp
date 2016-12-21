@@ -198,7 +198,7 @@ void Mesh::selectTopComponet2()
 }
 
 
-void Mesh::Draw(int mode) const
+void Mesh::Draw(int mode, int selectOrDeselect) const
 {
 	glPushMatrix();
 
@@ -210,6 +210,8 @@ void Mesh::Draw(int mode) const
 	QColor _color;
 
 	GLfloat diffuseColor[4] = { 1.0, 1.0, 1.0, 0.0 };
+
+	GLfloat blackColor[4] = { 0.2, 0.2, 0.2, 0.0 };
 
 	_color = QColor("red");
 	GLfloat selectionColor[4] =
@@ -239,17 +241,17 @@ void Mesh::Draw(int mode) const
 		for (int k = 0; k < 3; k++)
 		{
 			if (mode == RENDER_MODE){
-				if (accumulate_s[i])
-				{
-					glMaterialfv(GL_FRONT, GL_DIFFUSE, selectionColor);
-				}
-				else if (tempSelectedF[i]){
+
+				glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseColor);
+				
+				if (selectOrDeselect == 0 && tempSelectedF[i])
 					glMaterialfv(GL_FRONT, GL_DIFFUSE, middleColor);
-				}
-				else
-				{
-					glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseColor);
-				}
+				
+				if (accumulate_s[i])
+					glMaterialfv(GL_FRONT, GL_DIFFUSE, selectionColor);
+
+				if (selectOrDeselect == 1 && tempSelectedF[i])
+					glMaterialfv(GL_FRONT, GL_DIFFUSE, blackColor);
 			}
 			else{
 				GLfloat tempColor[4];

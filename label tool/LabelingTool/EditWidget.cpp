@@ -195,8 +195,8 @@ EditWidget::EditWidget()
 	vLayout->addWidget(label1);
 	vLayout->addWidget(line1);
 	vLayout->addSpacing(10);
-	vLayout->addWidget(label2);
-	vLayout->addWidget(line2);
+	//vLayout->addWidget(label2);
+	//vLayout->addWidget(line2);
 	vLayout->addSpacing(10);
 	vLayout->addWidget(explain);
 	
@@ -213,6 +213,8 @@ EditWidget::EditWidget()
 	layout->setRowStretch(0, 1);
 
 	setLayout(layout);
+
+	glWidget->setFocusPolicy(Qt::StrongFocus);
 
 	connect(glWidget, SIGNAL(setText(const QString &)), textBrowser, SLOT(setText(const QString &)));
 	connect(glWidget, SIGNAL(append(const QString &)), textBrowser, SLOT(append(const QString &)));
@@ -331,8 +333,9 @@ void EditWidget::clear(){
 
 void EditWidget::addRegion(){
 	int tempClassLabel = line1->text().toInt();
-	int tempRegionNumber = line2->text().toInt();
-	glWidget->addRegion(tempClassLabel, tempRegionNumber);
+	//int tempRegionNumber = line2->text().toInt();
+	glWidget->RegionCount++;
+	glWidget->addRegion(tempClassLabel, glWidget->RegionCount);
 	glWidget->nowDrawMode = REGION_MODE;
 	glWidget->outputInfo();
 }
@@ -356,6 +359,8 @@ void EditWidget::changeRightButtonMode2(){
 
 void EditWidget::changeSelectDepth(){
 	glWidget->selectDepth = selectDepth->value() / 1000.0 * (zmax - zmin) + zmin;
+	qDebug() << "selecting: zmax" << zmax << "  zmin" << zmin << "  depth" << glWidget->selectDepth;
+
 	glWidget->updateDepthSelect();
 	glWidget->update();
 	glWidget->outputInfo();
@@ -423,7 +428,8 @@ void EditWidget::writePTS(){
 
 	QTextStream txtOutput(&f);
 	for (int i = 0; i < glWidget->curMesh->V.rows(); i++){
-		txtOutput << glWidget->curMesh->V(i, 0) << " " << glWidget->curMesh->V(i, 1) << " " << glWidget->curMesh->V(i, 2) << endl;
+		if (glWidget->curMesh->pointRegion[i] != 0)
+			txtOutput << glWidget->curMesh->V(i, 0) << " " << glWidget->curMesh->V(i, 1) << " " << glWidget->curMesh->V(i, 2) << endl;
 	}
 	f.close();
 }
@@ -444,7 +450,8 @@ void EditWidget::writePInfo(){
 
 	QTextStream txtOutput(&f);
 	for (int i = 0; i < glWidget->curMesh->V.rows(); i++){
-		txtOutput<< glWidget->curMesh->pointRegion[i] << " " << glWidget->curMesh->pointLabel[i] << endl;
+		if (glWidget->curMesh->pointRegion[i] != 0)
+			txtOutput<< glWidget->curMesh->pointRegion[i] << " " << glWidget->curMesh->pointLabel[i] << endl;
 	}
 	f.close();
 }
