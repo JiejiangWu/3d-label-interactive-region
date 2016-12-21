@@ -14,7 +14,7 @@ class GlWidget : public QOpenGLWidget
 protected:
 	QTimer _refreshTimer;
 	QVector<Mesh*> _meshes;
-	Mesh *curMesh;
+	
 	QPoint _lastPos, _currPos,_dragVec;
 	Eigen::Vector4d v3D;
 	int _rx;
@@ -51,11 +51,18 @@ public:
 
 	void prepareNewSelect();
 	void updateDepthSelect();
+	void outputInfo();
 
+	Mesh *curMesh;
 	int nowDrawMode;
 
 	int sMode;  // 0 ,select  1, deselect
 	GLdouble minDepth, maxDepth, selectDepth;
+
+	QVector<QString> classNames;
+
+	
+
 
 signals:
 	void append(const QString &);
@@ -77,6 +84,9 @@ protected:
 	void outputSet(const QString &);
 	void outputAppend(const QString &);
 	void outputAppend(const char * f, ...);
+
+
+	
 };
 
 #endif

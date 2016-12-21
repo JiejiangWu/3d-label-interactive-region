@@ -63,6 +63,14 @@ GlWidget::GlWidget(QWidget *parent)
 	curMesh = NULL;
 	nowDrawMode = RENDER_MODE;
 	sMode = 0;
+
+	classNames.push_back("sit");
+	classNames.push_back("rely");
+	classNames.push_back("grounding");
+	classNames.push_back("handput");
+	classNames.push_back("grasp");
+	classNames.push_back("pedal");
+	classNames.push_back("carry");
 }
 
 GlWidget::~GlWidget()
@@ -200,7 +208,7 @@ void GlWidget::mouseMoveEvent(QMouseEvent *event)
 	if (!curMesh)
 		return;
 
-	isClicked = false;
+	//isClicked = false;
 	_currPos = event->pos();
 
 	if (isRotateMode)
@@ -237,40 +245,6 @@ void GlWidget::mouseMoveEvent(QMouseEvent *event)
 
 	update();
 
-	//isClicked = false;
-	//_currPos = event->pos();
-	//MousePt.s.X = (GLfloat)event->x();
-	//MousePt.s.Y = (GLfloat)event->y();
-
-	////selectTopMode = false;
-	//selectAreaMode = true;
-
-	//if (isRotateMode && event->buttons() & Qt::LeftButton)
-	//{
-	//	Quat4fT     ThisQuat;
-
-	//	_arcBall->drag(&MousePt, &ThisQuat);						// Update End Vector And Get Rotation As Quaternion
-	//	Matrix3fSetRotationFromQuat4f(&ThisRot, &ThisQuat);		// Convert Quaternion Into Matrix3fT
-	//	Matrix3fMulMatrix3f(&ThisRot, &LastRot);				// Accumulate Last Rotation Into This One
-	//	Matrix4fSetRotationFromMatrix3f(&Transform, &ThisRot);	// Set Our Final Transform's Rotation From This One
-	//}
-
-	//if (isDragMode)
-	//{
-	//	_dragVec = _currPos - _lastPos;
-	//	Eigen::Vector4d v2D(_dragVec.x(), -_dragVec.y(), 0, 1), v3D;
-	//	v2D /= 0.5*qMin(width(), height());
-
-	//	Eigen::Matrix4d T;
-	//	for (int i = 0; i < 4; i++)
-	//		for (int j = 0; j < 4; j++)
-	//			T(i, j) = Transform.M[i * 4 + j];
-	//	v3D = T*v2D;
-	//	for (int i = 0; i < 3; i++)
-	//		curMesh->dragVec(i) = v3D(i);
-	//}
-
-	//update();
 }
 
 void GlWidget::mousePressEvent(QMouseEvent *event)
@@ -303,6 +277,7 @@ void GlWidget::mousePressEvent(QMouseEvent *event)
 		prepareNewSelect();
 		curMesh->tempSelectedF.clear();
 		curMesh->tempSelectedF.resize(curMesh->F.rows(), false);
+		outputInfo();
 	}
 
 	if (event->button() == Qt::RightButton)
@@ -363,7 +338,7 @@ void GlWidget::mouseReleaseEvent(QMouseEvent *event)
 		pick(event->pos());
 
 	//	if (curMesh->select1 && !curMesh->select2)
-		if (curMesh->select1)
+		/*if (curMesh->select1)
 		{
 			QStringList s;
 			for (int i = 0; i < curMesh->F.rows(); i++)
@@ -376,7 +351,7 @@ void GlWidget::mouseReleaseEvent(QMouseEvent *event)
 			outputAppend("#Index of faces");
 			outputAppend(s.join('\n'));
 			firstDrag = true;
-		}
+		}*/
 		/*if (curMesh->select2)
 		{
 			QStringList s;
@@ -397,7 +372,7 @@ void GlWidget::mouseReleaseEvent(QMouseEvent *event)
 	isRotateMode = false;
 	isDragMode = false;
 	selectAreaMode = false;
-	isClicked = true;
+	isClicked = false;
 
 	//_currPos = event->pos();
 	//isSelecting = false;
@@ -508,6 +483,7 @@ void GlWidget::pick(const QPoint &pos)
 	glPopMatrix();
 
 	update();
+	outputInfo();
 }
 
 void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
@@ -569,7 +545,7 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 				}
 				selectDepth = zMax;
 
-				emit(depthChanged(zMax, zMin));
+				
 				//qDebug() << name;
 			}
 			ptr += 3 + nb_names;
@@ -579,12 +555,11 @@ void GlWidget::processHits(GLint hits, GLuint buffer[],int mode)
 		for (int i = 0; i < tempSelectedFIdx.size(); i++){
 			if (selectAreaMode){
 				updateDepthSelect();
+				emit(depthChanged(zMax, zMin));
 			}
 			else{
-				/*if (mode == 0)*/
-					curMesh->tempSelectedF[n1] = true;
-				/*if (mode == 1)
-					curMesh->accumulate_s[n1] = false;*/
+
+				curMesh->tempSelectedF[n1] = true;
 			}
 		}
 		//
@@ -681,4 +656,69 @@ void GlWidget::updateDepthSelect(){
 			curMesh->tempSelectedF[tempSelectedFIdx[i]] = true;
 		}
 	}
+}
+
+void GlWidget::outputInfo(){
+		int regionNum = 0;
+		int maxClass = 0;
+		std::vector<int> regionSet, classSet;
+		for (int i = 0; i < curMesh->region_number.size(); i++){
+			if (regionNum < curMesh->region_number[i])
+				regionNum = curMesh->region_number[i];
+			if (maxClass < curMesh->class_label[i])
+				maxClass = curMesh->class_label[i];
+
+			std::vector<int>::iterator ret;
+			ret = std::find(regionSet.begin(), regionSet.end(), curMesh->region_number[i]);
+			if (ret == regionSet.end())
+				regionSet.push_back(curMesh->region_number[i]);
+		}
+		std::sort(regionSet.begin(), regionSet.end());
+
+		for (int i = 0; i < regionSet.size(); i++){
+			for (int j = 0; j < curMesh->region_number.size();j++)
+				if (curMesh->region_number[j] == regionSet[i])
+				{
+					classSet.push_back(curMesh->class_label[j]);
+					break;
+				}
+		}
+
+		
+		QString out = "Region  \t  Class";
+		outputSet(out);
+		for (int i = 0; i < regionSet.size(); i++){
+			QString regionInfo;
+			if (classSet[i] > 0){
+				regionInfo = QString::number(regionSet[i]);
+				regionInfo = regionInfo + "  \t  " + classNames[classSet[i] - 1];
+				outputAppend(regionInfo);
+			}
+		}
+
+		if (nowDrawMode == RENDER_MODE){
+			QString out = "MODE:";
+			if (sMode == 0)
+				out = out + " select";
+			if (sMode == 1)
+				out = out + "deselect";
+			outputAppend(" ");
+			outputAppend(out);
+			int count = 0;
+			for (int i = 0; i < curMesh->tempSelectedF.size(); i++){
+				if (curMesh->tempSelectedF[i])
+					count++;
+			}
+			outputAppend("temp faces:" + QString::number(count));
+
+			count = 0;
+			for (int i = 0; i < curMesh->accumulate_s.size(); i++){
+				if (curMesh->accumulate_s[i])
+					count++;
+			}
+			outputAppend("selected faces:" + QString::number(count));
+		}
+//		out = out + 
+	
+		
 }

@@ -2,7 +2,7 @@
 #include <fstream>
 #include "QSlim.h"
 
-#define MAX_FACES 50000
+#define MAX_FACES 20000
 
 using namespace std;
 
@@ -125,11 +125,12 @@ EditWidget::EditWidget()
 	//按钮们
 	QVBoxLayout *vLayout = new QVBoxLayout();
 	openButton = new QPushButton(tr("Load"));
-	saveAsButton = new QPushButton(tr("Save As"));
 	saveButton = new QPushButton(tr("Save"));
-	copyButton = new QPushButton(tr("Copy"));
-	clearButton = new QPushButton(tr("Clear"));
-	generateButton = new QPushButton(tr("generateText"));
+
+	PreButton = new QPushButton(tr("Pre Model"));
+	NextButton = new QPushButton(tr("Next Model"));
+
+	clearButton = new QPushButton(tr("clear Selected faces"));
 	addRegionButton = new QPushButton(tr("add new Region"));
 	resetButton = new QPushButton(tr("reset all Region"));
 
@@ -150,7 +151,9 @@ EditWidget::EditWidget()
 
 	//类别、区域号码输入框
 	line1 = new QLineEdit;
+	line1->setValidator(new QIntValidator(1, glWidget->classNames.size(), this));
 	line2 = new QLineEdit;
+	line2->setValidator(new QIntValidator(1, 500, this));
 
 	QLabel * label1 = new QLabel(tr("class label"));
 	QLabel * label2 = new QLabel(tr("region number"));
@@ -165,29 +168,27 @@ EditWidget::EditWidget()
 	explain->setFixedSize(150, 240);
 	explain->setLineWrapMode(QTextEdit::NoWrap);
 
-	explain->append("sit\t1");
-	explain->append("rely\t2");
-	explain->append("grounding\t3");
-	explain->append("handput\t4");
-	explain->append("grasp\t5");
-	explain->append("pedal\t6");
-	explain->append("carry\t7");
+	for (int i = 0; i < glWidget->classNames.size(); i++){
+		QString className = glWidget->classNames[i];
+		className = className + "\t" + QString::number(i + 1);
+		explain->append(className);
+	}
 	explain->setReadOnly(true);
 	explain->setDocumentTitle("class");
 	
 
 	vLayout->addWidget(openButton);
-	vLayout->addWidget(saveAsButton);
 	vLayout->addWidget(saveButton);
+
+	vLayout->addSpacing(10);
+	vLayout->addWidget(PreButton);
+	vLayout->addWidget(NextButton);
 	vLayout->addSpacing(10);
 	vLayout->addWidget(mouseRightButtonMode[0]);
 	vLayout->addWidget(mouseRightButtonMode[1]);
 	vLayout->addWidget(selectDepth);
 	vLayout->addSpacing(10);
-	vLayout->addWidget(copyButton);
 	vLayout->addWidget(clearButton);
-	vLayout->addWidget(generateButton);
-	vLayout->addSpacing(10);
 	vLayout->addWidget(resetButton);
 	vLayout->addWidget(addRegionButton);
 	vLayout->addSpacing(10);
@@ -216,11 +217,11 @@ EditWidget::EditWidget()
 	connect(glWidget, SIGNAL(setText(const QString &)), textBrowser, SLOT(setText(const QString &)));
 	connect(glWidget, SIGNAL(append(const QString &)), textBrowser, SLOT(append(const QString &)));
 	connect(openButton, SIGNAL(clicked()), this, SLOT(load()));
-	connect(saveAsButton, SIGNAL(clicked()), this, SLOT(saveAs()));
+	
 	connect(saveButton, SIGNAL(clicked()), this, SLOT(saveToFile()));
-	connect(copyButton, SIGNAL(clicked()), this, SLOT(copyAll()));
+	connect(PreButton, SIGNAL(clicked()), this, SLOT(PreModel()));
 	connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
-	connect(generateButton, SIGNAL(clicked()), this, SLOT(generateText()));
+	connect(NextButton, SIGNAL(clicked()), this, SLOT(NextModel()));
 	connect(addRegionButton, SIGNAL(clicked()), this, SLOT(addRegion()));
 	connect(resetButton, SIGNAL(clicked()), this, SLOT(resetAll()));
 	connect(mouseRightButtonMode[0], SIGNAL(pressed()), this, SLOT(changeRightButtonMode1()));
@@ -246,6 +247,11 @@ void EditWidget::init()
 		if (path.length() == 0)
 			return;
 		saveName = path;
+		QFileInfo fi = QFileInfo(saveName);
+		
+		fileName = fi.fileName();
+		filePath = fi.absolutePath();
+		
 		mm = new Mesh(path.toStdString());
 		if (mm->F.rows() > MAX_FACES)
 		{
@@ -265,7 +271,7 @@ void EditWidget::init()
 			qslim_run();
 			ReplaceM(mm);
 			mm->resetSelection();
-			mm->write("temp.off");
+			mm->write(saveName.toStdString());
 		}
 		loadFromFile = false;
 	}
@@ -273,7 +279,6 @@ void EditWidget::init()
 		mm = new Mesh("temp.off");
 
 	mm->id=0;
-	//mm->needConnectionNet();
 	mm->applyNormalize();
 	mm->needNormals();
 	glWidget->setModel(mm);
@@ -292,18 +297,30 @@ void EditWidget::saveAs()
 void EditWidget::saveToFile()
 {
 	save();
-	mm->write(saveName.toStdString());
+	//mm->write(saveName.toStdString());
+
+
 }
 
 void EditWidget::save()
 {
-	mm->write("temp.off");
+	if (glWidget->curMesh != NULL){
+		getptsLabel();
+		writeFInfo();
+		writePTS();
+		writePInfo();
+	}
 }
 
-void EditWidget::copyAll()
+void EditWidget::PreModel()
 {
-	textBrowser->selectAll();
-	textBrowser->copy();
+
+}
+
+
+
+void EditWidget::NextModel(){
+
 }
 
 void EditWidget::clear(){
@@ -312,35 +329,36 @@ void EditWidget::clear(){
 	glWidget->nowDrawMode = REGION_MODE;
 }
 
-void EditWidget::generateText(){
-
-}
-
 void EditWidget::addRegion(){
 	int tempClassLabel = line1->text().toInt();
 	int tempRegionNumber = line2->text().toInt();
 	glWidget->addRegion(tempClassLabel, tempRegionNumber);
 	glWidget->nowDrawMode = REGION_MODE;
+	glWidget->outputInfo();
 }
 void EditWidget::resetAll(){
 	glWidget->resetAllRegion();
 	glWidget->nowDrawMode = RENDER_MODE;
+	glWidget->outputInfo();
 }
 
 void EditWidget::changeRightButtonMode1(){
 	rightButtonState = 0;
 	glWidget->sMode = rightButtonState;
+	glWidget->outputInfo();
 }
 
 void EditWidget::changeRightButtonMode2(){
 	rightButtonState = 1;
 	glWidget->sMode = rightButtonState;
+	glWidget->outputInfo();
 }
 
 void EditWidget::changeSelectDepth(){
 	glWidget->selectDepth = selectDepth->value() / 1000.0 * (zmax - zmin) + zmin;
 	glWidget->updateDepthSelect();
 	glWidget->update();
+	glWidget->outputInfo();
 }
 
 void EditWidget::updateDepthMaxMin(GLdouble max, GLdouble min){
@@ -351,6 +369,84 @@ void EditWidget::updateDepthMaxMin(GLdouble max, GLdouble min){
 	zmin = min;
 	zmax = max;
 	selectDepth->setValue(1000);
+}
+
+
+void EditWidget::getptsLabel(){
+	glWidget->curMesh->pointLabel.clear();
+	glWidget->curMesh->pointLabel.resize(glWidget->curMesh->V.rows(), 0);
+	glWidget->curMesh->pointRegion.clear();
+	glWidget->curMesh->pointRegion.resize(glWidget->curMesh->V.rows(), 0);
+	
+	for (int i = 0; i < glWidget->curMesh->F.rows(); i++){
+		for (int k = 0; k < 3; k++){
+			glWidget->curMesh->pointLabel[glWidget->curMesh->F(i, k)] = glWidget->curMesh->class_label[i];
+			glWidget->curMesh->pointRegion[glWidget->curMesh->F(i, k)] = glWidget->curMesh->region_number[i];
+		}
+	}
+}
+
+void EditWidget::writeFInfo(){
+	QString FInfoFile;
+	FInfoFile.resize(fileName.size() - 4);
+	for (int i = 0; i <= fileName.size() - 4; i++){
+		FInfoFile[i] = fileName[i];
+	}
+	FInfoFile.append("finfo");
+	QFile f(filePath + "/labelInfo/finfo/" + FInfoFile);
+	if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		cout << "Open failed." << endl;
+		return;
+	}
+
+	QTextStream txtOutput(&f);
+	for (int i = 0; i < glWidget->curMesh->F.rows(); i++){
+		txtOutput << glWidget->curMesh->region_number[i] << " " << glWidget->curMesh->class_label[i] << endl;
+	}
+	f.close();
+}
+
+void EditWidget::writePTS(){
+	QString PTSFile;
+	PTSFile.resize(fileName.size() - 4);
+	for (int i = 0; i <= fileName.size() - 4; i++){
+		PTSFile[i] = fileName[i];
+	}
+	PTSFile.append("pts");
+	QFile f(filePath + "/labelInfo/pts/" + PTSFile);
+	if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		cout << "Open failed." << endl;
+		return;
+	}
+
+	QTextStream txtOutput(&f);
+	for (int i = 0; i < glWidget->curMesh->V.rows(); i++){
+		txtOutput << glWidget->curMesh->V(i, 0) << " " << glWidget->curMesh->V(i, 1) << " " << glWidget->curMesh->V(i, 2) << endl;
+	}
+	f.close();
+}
+
+void EditWidget::writePInfo(){
+	QString PInfoFile;
+	PInfoFile.resize(fileName.size() - 4);
+	for (int i = 0; i <= fileName.size() - 4; i++){
+		PInfoFile[i] = fileName[i];
+	}
+	PInfoFile.append("pinfo");
+	QFile f(filePath + "/labelInfo/pinfo/" + PInfoFile);
+	if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		cout << "Open failed." << endl;
+		return;
+	}
+
+	QTextStream txtOutput(&f);
+	for (int i = 0; i < glWidget->curMesh->V.rows(); i++){
+		txtOutput<< glWidget->curMesh->pointRegion[i] << " " << glWidget->curMesh->pointLabel[i] << endl;
+	}
+	f.close();
 }
 
 EditWidget::~EditWidget()

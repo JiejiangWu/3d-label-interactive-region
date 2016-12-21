@@ -22,14 +22,14 @@ protected:
 	GlWidget *glWidget;
 	QTextBrowser *textBrowser;
 	Mesh *mm;
-	QPushButton *openButton, *saveAsButton, *saveButton, *clearButton, *copyButton, *generateButton, *addRegionButton, *resetButton;
+	QPushButton *openButton, *saveAsButton, *saveButton, *clearButton, *PreButton, *NextButton, *addRegionButton, *resetButton;
 	QRadioButton* mouseRightButtonMode[2];
 	QButtonGroup*  group;
 	QSlider *selectDepth;
 
 	QLineEdit *line1, *line2;
 	bool loadFromFile;
-	QString saveName;
+	QString saveName, filePath,fileName;
 	GLdouble zmin, zmax;
 
 	int rightButtonState;  // 0 - select, 1 - deselect
@@ -37,13 +37,18 @@ protected:
 	void init();
 	void save();
 
+	void getptsLabel();
+	void writePTS();
+	void writePInfo();
+	void writeFInfo();
+
 public slots:
 	void load();
 	void saveAs();
 	void saveToFile();
-	void copyAll();
+	void PreModel();
 	void clear();
-	void generateText();
+	void NextModel();
 	void addRegion();
 	void resetAll();
 	void changeRightButtonMode1();

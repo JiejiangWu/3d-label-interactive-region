@@ -49,6 +49,9 @@ public:
 	std::vector<bool> deselectedF;
 	std::vector<int> class_label;
 	std::vector<int> region_number;
+
+	std::vector<int> pointLabel;
+	std::vector<int> pointRegion;
 	Eigen::Vector3d dragVec;
 
 	int id, pickedF;
