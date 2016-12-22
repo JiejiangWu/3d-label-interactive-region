@@ -27,21 +27,30 @@ protected:
 	QRadioButton* mouseRightButtonMode[2];
 	QButtonGroup*  group;
 	QSlider *selectDepth;
+	QLabel *cntLabel;
 
 	QLineEdit *line1, *line2;
 	bool loadFromFile;
 	QString saveName, filePath,fileName;
+	QString tempModelName, tempModelID, finfoName, finfoPath;
 	GLdouble zmin, zmax;
+	QString modelFolder, labelFolder;
+	QFileInfoList modelList;
+	QFileInfoList::iterator modelIter;
+	int modelCnt, modelIdx;
 
 	int rightButtonState;  // 0 - select, 1 - deselect
 
 	void init();
 	void save();
+	void reloadModel();
+	void normalLoad();
 
 	void getptsLabel();
 	void writePTS();
 	void writePInfo();
 	void writeFInfo();
+
 
 public slots:
 	void load();

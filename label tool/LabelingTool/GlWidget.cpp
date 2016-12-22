@@ -63,16 +63,9 @@ GlWidget::GlWidget(QWidget *parent)
 	curMesh = NULL;
 	nowDrawMode = RENDER_MODE;
 	sMode = 0;
-
-	classNames.push_back("sit");
-	classNames.push_back("rely");
-	classNames.push_back("grounding");
-	classNames.push_back("handput");
-	classNames.push_back("grasp");
-	classNames.push_back("pedal");
-	classNames.push_back("carry");
-
 	RegionCount = 0;
+
+	readClassNames();
 }
 
 GlWidget::~GlWidget()
@@ -82,6 +75,25 @@ GlWidget::~GlWidget()
 	QVectorIterator<Mesh*> cube(_meshes);
 	while (cube.hasNext())
 		delete cube.next();
+}
+
+void GlWidget::readClassNames()
+{
+	QString classNameFile = ".\\labelInfo\\classNames.txt";
+	QFile f(classNameFile);
+	if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		qDebug() << "Open failed." << endl;
+		return;
+	}
+	QTextStream txtInput(&f);
+	QString lineStr;
+	while (!txtInput.atEnd())
+	{
+		lineStr = txtInput.readLine();
+		classNames.push_back(lineStr);
+	}
+	f.close();
 }
 
 void GlWidget::setModel(Mesh *m)

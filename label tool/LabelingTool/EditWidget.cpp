@@ -2,7 +2,7 @@
 #include <fstream>
 #include "QSlim.h"
 
-#define MAX_FACES 20000
+#define MAX_FACES 300000
 
 using namespace std;
 
@@ -128,6 +128,7 @@ EditWidget::EditWidget()
 	saveButton = new QPushButton(tr("Save"));
 
 	PreButton = new QPushButton(tr("Pre Model"));
+	PreButton->setEnabled(false);
 	NextButton = new QPushButton(tr("Next Model"));
 
 	clearButton = new QPushButton(tr("clear Selected faces"));
@@ -158,6 +159,7 @@ EditWidget::EditWidget()
 	QLabel * label1 = new QLabel(tr("class label"));
 	QLabel * label2 = new QLabel(tr("region number"));
 
+	cntLabel = new QLabel();
 
 	// Àà±ð×¢ÊÍ
 	QTextEdit *explain = new QTextEdit;
@@ -165,12 +167,12 @@ EditWidget::EditWidget()
 	pl.setBrush(QPalette::Base, QBrush(QColor(255, 0, 0, 0)));
 	explain->setPalette(pl);
 	explain->setFontPointSize(15);
-	explain->setFixedSize(150, 240);
+	explain->setFixedSize(180, 240);
 	explain->setLineWrapMode(QTextEdit::NoWrap);
 
 	for (int i = 0; i < glWidget->classNames.size(); i++){
 		QString className = glWidget->classNames[i];
-		className = className + "\t" + QString::number(i + 1);
+		className = QString::number(i + 1) + "\t" + className;
 		explain->append(className);
 	}
 	explain->setReadOnly(true);
@@ -181,9 +183,12 @@ EditWidget::EditWidget()
 	vLayout->addWidget(saveButton);
 
 	vLayout->addSpacing(10);
-	vLayout->addWidget(PreButton);
-	vLayout->addWidget(NextButton);
-	vLayout->addSpacing(10);
+	QHBoxLayout *preAndNextLayout = new QHBoxLayout();
+	preAndNextLayout->addWidget(PreButton);
+	preAndNextLayout->addWidget(NextButton);
+	vLayout->addLayout(preAndNextLayout);
+	vLayout->addWidget(cntLabel,0, Qt::AlignCenter);
+	vLayout->addSpacing(30);
 	vLayout->addWidget(mouseRightButtonMode[0]);
 	vLayout->addWidget(mouseRightButtonMode[1]);
 	vLayout->addWidget(selectDepth);
@@ -199,13 +204,7 @@ EditWidget::EditWidget()
 	//vLayout->addWidget(line2);
 	vLayout->addSpacing(10);
 	vLayout->addWidget(explain);
-	
-
-
-
 	vLayout->addStretch();
-
-
 	layout->addLayout(vLayout, 0, 0);
 	layout->addWidget(glWidget, 0, 1);
 	layout->addWidget(textBrowser, 0, 2);
@@ -233,12 +232,87 @@ EditWidget::EditWidget()
 
 	mm = NULL;
 
+	modelFolder = "shapes";
+	labelFolder = "labelInfo";
+	QDir modelDir = QDir(modelFolder);
+	QDir finfoDir = QDir(labelFolder);
+	finfoDir.cd("finfo");
+
+	QStringList nameFilter;
+	nameFilter << "*.off";
+	modelDir.setNameFilters(nameFilter);
+	modelList = modelDir.entryInfoList();
+	modelIter = modelList.begin();
+	modelCnt = modelList.length();
+
+	modelIdx = 1;
+
+	for (int i = 0; i < modelCnt - 1; i++){
+		tempModelName = modelIter->fileName();
+		tempModelID = tempModelName.left(tempModelName.lastIndexOf('.'));
+		finfoName = tempModelID + ".finfo";
+		finfoPath = finfoDir.filePath(finfoName);
+		QFile file(finfoPath);
+		if (!file.exists())
+			break;
+		modelIter++;
+		modelIdx++;
+		PreButton->setEnabled(true);
+	}
+	if (modelIdx == modelCnt)
+		NextButton->setEnabled(false);
+	reloadModel();
+
 }
+
 
 void EditWidget::load()
 {
 	loadFromFile = true;
 	init();
+}
+
+void EditWidget::reloadModel()
+{
+	cntLabel->setText(QString("%1/%2").arg(modelIdx).arg(modelCnt));
+	normalLoad();
+}
+
+void EditWidget::normalLoad()
+{
+	glWidget->nowDrawMode = RENDER_MODE;
+	glWidget->sMode = 0;
+	glWidget->RegionCount = 0;
+	QString path = modelIter->filePath();
+	saveName = path;
+	QFileInfo fi = QFileInfo(saveName);
+
+	fileName = fi.fileName();
+	filePath = fi.absolutePath();
+	mm = new Mesh(path.toStdString());
+	if (mm->F.rows() > MAX_FACES)
+	{
+		InitM0(mm);
+		qslim_init();
+		face_target = MAX_FACES;
+		error_tolerance = HUGE;
+		will_use_plane_constraint = true;
+		will_use_vertex_constraint = false;
+		will_preserve_boundaries = true;
+		will_preserve_mesh_quality = true;
+		will_constrain_boundaries = true;
+		boundary_constraint_weight = 1.0;
+		will_weight_by_area = false;
+		placement_policy = 1;
+		pair_selection_tolerance = 0.0;
+		qslim_run();
+		ReplaceM(mm);
+		mm->resetSelection();
+		mm->write(saveName.toStdString());
+	}
+	mm->applyNormalize();
+	mm->needNormals();
+	glWidget->setModel(mm);
 }
 
 void EditWidget::init()
@@ -300,29 +374,66 @@ void EditWidget::saveToFile()
 {
 	save();
 	//mm->write(saveName.toStdString());
-
-
 }
 
 void EditWidget::save()
 {
 	if (glWidget->curMesh != NULL){
-		getptsLabel();
+		//getptsLabel();
 		writeFInfo();
-		writePTS();
-		writePInfo();
+		//writePTS();
+		//writePInfo();
 	}
 }
 
 void EditWidget::PreModel()
 {
-
+	save();
+	modelIter--;
+	modelIdx--;
+	if (modelIter == modelList.begin())
+	{
+		PreButton->setDisabled(true);
+	}
+	else
+	{
+		PreButton->setEnabled(true);
+	}
+	if (modelIter == modelList.end() - 1)
+	{
+		NextButton->setDisabled(true);
+	}
+	else
+	{
+		NextButton->setEnabled(true);
+	}
+	reloadModel();
 }
 
 
 
-void EditWidget::NextModel(){
-
+void EditWidget::NextModel()
+{
+	save();
+	modelIter++;
+	modelIdx++;
+	if (modelIter == modelList.begin())
+	{
+		PreButton->setDisabled(true);
+	}
+	else
+	{
+		PreButton->setEnabled(true);
+	}
+	if (modelIter == modelList.end() - 1)
+	{
+		NextButton->setDisabled(true);
+	}
+	else
+	{
+		NextButton->setEnabled(true);
+	}
+	reloadModel();
 }
 
 void EditWidget::clear(){
@@ -378,6 +489,8 @@ void EditWidget::updateDepthMaxMin(GLdouble max, GLdouble min){
 
 
 void EditWidget::getptsLabel(){
+	if (glWidget->curMesh == NULL)
+		return;
 	glWidget->curMesh->pointLabel.clear();
 	glWidget->curMesh->pointLabel.resize(glWidget->curMesh->V.rows(), 0);
 	glWidget->curMesh->pointRegion.clear();
@@ -392,13 +505,15 @@ void EditWidget::getptsLabel(){
 }
 
 void EditWidget::writeFInfo(){
+	if (glWidget->curMesh == NULL)
+		return;
 	QString FInfoFile;
 	FInfoFile.resize(fileName.size() - 4);
 	for (int i = 0; i <= fileName.size() - 4; i++){
 		FInfoFile[i] = fileName[i];
 	}
 	FInfoFile.append("finfo");
-	QFile f(filePath + "/labelInfo/finfo/" + FInfoFile);
+	QFile f(filePath.left(filePath.lastIndexOf('/')) + "/labelInfo/finfo/" + FInfoFile);
 	if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
 		cout << "Open failed." << endl;
@@ -413,6 +528,8 @@ void EditWidget::writeFInfo(){
 }
 
 void EditWidget::writePTS(){
+	if (glWidget->curMesh == NULL)
+		return;
 	QString PTSFile;
 	PTSFile.resize(fileName.size() - 4);
 	for (int i = 0; i <= fileName.size() - 4; i++){
@@ -435,6 +552,8 @@ void EditWidget::writePTS(){
 }
 
 void EditWidget::writePInfo(){
+	if (glWidget->curMesh == NULL)
+		return;
 	QString PInfoFile;
 	PInfoFile.resize(fileName.size() - 4);
 	for (int i = 0; i <= fileName.size() - 4; i++){

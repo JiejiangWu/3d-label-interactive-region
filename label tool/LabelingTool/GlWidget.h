@@ -86,7 +86,7 @@ protected:
 	void outputSet(const QString &);
 	void outputAppend(const QString &);
 	void outputAppend(const char * f, ...);
-
+	void readClassNames();
 
 	
 };
