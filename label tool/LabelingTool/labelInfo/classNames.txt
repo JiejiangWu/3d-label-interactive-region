@@ -1,0 +1,8 @@
+sit
+rely
+grounding
+handput
+grasp
+pedal
+carry
+press
